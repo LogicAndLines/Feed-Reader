@@ -14,6 +14,7 @@ class APIService: ObservableObject {
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
+    private let cacheManager = CacheManager.shared
     
     // MARK: - Rate Limiting
     private var requestCount = 0
@@ -132,6 +133,25 @@ class APIService: ObservableObject {
                    page: Int = 1, 
                    pageSize: Int = APIConfiguration.defaultPageSize) async throws -> NewsAPIResponse {
         
+        print("🔍 APIService: Fetching news for query: '\(query)', page: \(page)")
+        
+        // Check cache first (but don't cache empty results)
+        if let cachedResult = cacheManager.getCachedResult(for: query, page: page) {
+            print("📦 APIService: Found cached result with \(cachedResult.totalResults) articles")
+            // Only return cached result if it has articles
+            if cachedResult.totalResults > 0 {
+                print("✅ APIService: Returning cached result")
+                return cachedResult
+            } else {
+                print("🗑️ APIService: Clearing cache for empty results")
+                // Clear cache for empty results to force fresh API call
+                cacheManager.clearCacheForQuery(query)
+            }
+        } else {
+            print("📭 APIService: No cached result found")
+        }
+        
+        print("🌐 APIService: Making fresh API call...")
         let request = NewsAPIRequest(
             query: query,
             from: APIConfiguration.defaultFromDate,
@@ -140,7 +160,18 @@ class APIService: ObservableObject {
             pageSize: min(pageSize, APIConfiguration.maxPageSize)
         )
         
-        return try await fetchNews(request: request)
+        let response = try await fetchNews(request: request)
+        print("📡 APIService: API response received with \(response.totalResults) articles")
+        
+        // Only cache results that have articles
+        if response.totalResults > 0 {
+            print("💾 APIService: Caching successful result")
+            cacheManager.cacheResult(response, for: query, page: page)
+        } else {
+            print("⚠️ APIService: Not caching empty result")
+        }
+        
+        return response
     }
     
     // MARK: - Private Methods
@@ -216,6 +247,39 @@ extension APIService {
     nonisolated func searchNews(query: String) async throws -> [NewsArticle] {
         let response = try await fetchNews(query: query)
         return response.articles
+    }
+    
+    /// Fetches news with cache bypass (force refresh)
+    nonisolated func fetchNewsForceRefresh(query: String = "Apple", 
+                   page: Int = 1, 
+                   pageSize: Int = APIConfiguration.defaultPageSize) async throws -> NewsAPIResponse {
+        
+        print("🔄 APIService: Force refresh for query: '\(query)', page: \(page)")
+        
+        // Clear cache for this query to force fresh API call
+        cacheManager.clearCacheForQuery(query)
+        print("🗑️ APIService: Cache cleared for force refresh")
+        
+        let request = NewsAPIRequest(
+            query: query,
+            from: APIConfiguration.defaultFromDate,
+            sortBy: APIConfiguration.defaultSortBy,
+            page: page,
+            pageSize: min(pageSize, APIConfiguration.maxPageSize)
+        )
+        
+        let response = try await fetchNews(request: request)
+        print("📡 APIService: Force refresh API response with \(response.totalResults) articles")
+        
+        // Only cache results that have articles
+        if response.totalResults > 0 {
+            print("💾 APIService: Caching force refresh result")
+            cacheManager.cacheResult(response, for: query, page: page)
+        } else {
+            print("⚠️ APIService: Not caching empty force refresh result")
+        }
+        
+        return response
     }
     
     /// Convenience method to fetch news with custom parameters

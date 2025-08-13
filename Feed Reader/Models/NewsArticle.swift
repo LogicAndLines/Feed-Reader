@@ -83,7 +83,7 @@ extension NewsArticle {
             description: "Apple has unveiled its latest iPhone model featuring breakthrough technology and innovative design.",
             url: "https://example.com/article",
             urlToImage: "https://example.com/image.jpg",
-            publishedAt: "2025-08-04T10:30:00Z",
+            publishedAt: "2025-01-15T10:30:00Z",
             content: "This is a preview article content that demonstrates the structure of news articles in our app."
         )
     }
@@ -98,6 +98,21 @@ extension NewsArticle {
         self.publishedAt = publishedAt
         self.content = content
     }
+    
+    /// Creates a preview article with current date
+    static func previewWithCurrentDate() -> NewsArticle {
+        let currentDate = ISO8601DateFormatter().string(from: Date())
+        return NewsArticle(
+            source: Source(id: "techcrunch", name: "TechCrunch"),
+            author: "John Doe",
+            title: "Apple Announces New iPhone with Revolutionary Features",
+            description: "Apple has unveiled its latest iPhone model featuring breakthrough technology and innovative design.",
+            url: "https://example.com/article",
+            urlToImage: "https://example.com/image.jpg",
+            publishedAt: currentDate,
+            content: "This is a preview article content that demonstrates the structure of news articles in our app."
+        )
+    }
 }
 
 // MARK: - API Request Parameters
@@ -109,12 +124,12 @@ struct NewsAPIRequest {
     let pageSize: Int
     
     init(query: String = "Apple", 
-         from: String = "2025-08-04", 
+         from: String? = nil, 
          sortBy: String = "popularity", 
          page: Int = 1, 
          pageSize: Int = 20) {
         self.query = query
-        self.from = from
+        self.from = from ?? APIConfiguration.defaultFromDate
         self.sortBy = sortBy
         self.page = page
         self.pageSize = pageSize

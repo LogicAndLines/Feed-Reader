@@ -1,268 +1,174 @@
-# Feed Reader - Networking Implementation
+# Feed Reader
 
-This project implements a comprehensive networking structure for a SwiftUI news reader app using the NewsAPI.
+A modern, feature-rich news reader app built with SwiftUI that fetches news from the NewsAPI.
 
-## 🏗️ Architecture
+## Features
 
-The implementation follows MVVM architecture with clear separation of concerns:
+### 🚀 Core Functionality
+- **Real-time News Fetching**: Get the latest news from NewsAPI
+- **Search & Filter**: Search through articles with real-time results
+- **Pagination**: Smooth loading of additional articles
+- **Pull-to-Refresh**: Refresh the news feed with a simple gesture
+
+### 🎨 Enhanced User Experience
+- **Async Image Loading**: Images load asynchronously with placeholder support
+- **Smooth Scrolling**: Lazy loading and smooth scrolling for better performance
+- **Empty States**: Beautiful empty state views for different scenarios
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+
+### 💾 Smart Caching
+- **Image Caching**: Images are cached with TTL-based invalidation (24 hours)
+- **Search Results Caching**: Search results cached for 1 hour to reduce API calls
+- **Memory & Disk Storage**: Efficient caching using both memory and disk storage
+
+### 🧪 Development & Testing
+- **Mock Data Service**: Comprehensive mock data for development and testing
+- **Dependency Injection**: Clean architecture with proper dependency management
+- **Environment Configuration**: Easy switching between mock and real data
+
+### 📱 Modern UI/UX
+- **Card-based Design**: Beautiful card layout for news articles
+- **Responsive Layout**: Adapts to different screen sizes
+- **Loading States**: Skeleton loaders and progress indicators
+- **Accessibility**: Built with accessibility in mind
+
+## Architecture
+
+The app follows clean architecture principles with clear separation of concerns:
 
 ```
 Feed Reader/
-├── Models/
-│   └── NewsArticle.swift          # Data models and request structures
-├── Networking/
-│   ├── APIService.swift           # Main networking service
-│   ├── APIConfiguration.swift     # API configuration and constants
-│   └── NewsAPIError.swift         # Custom error handling
-├── ViewModels/
-│   └── NewsViewModel.swift        # Business logic and state management
-├── Views/
-│   ├── NewsListView.swift         # Main UI implementation
-│   └── Feed_ReaderApp.swift       # App entry point
-└── README.md                      # Documentation
-
-Feed ReaderTests/
-└── NetworkTests.swift             # Unit tests for networking layer
+├── Models/           # Data models and structures
+├── Views/            # SwiftUI views and UI components
+├── ViewModels/       # Business logic and state management
+├── Networking/       # API services and network layer
+└── Tests/            # Unit and UI tests
 ```
 
-## 🚀 Features
+### Key Components
 
-### ✅ Implemented Requirements
+- **NewsViewModel**: Manages news data and API interactions
+- **APIService**: Handles network requests with caching
+- **ImageCache**: Manages image caching with TTL
+- **CacheManager**: Handles search results caching
+- **DependencyContainer**: Manages dependencies and configuration
 
-### 🔧 Technical Implementation Notes
+## Setup
 
-**Actor Isolation**: The networking layer is properly designed to avoid main actor isolation issues:
-- `APIService` methods are marked as `nonisolated` for network operations
-- `NewsViewModel` remains `@MainActor` for UI updates
-- Proper separation between networking and UI concerns
+### Prerequisites
+- Xcode 15.0+
+- iOS 17.0+
+- Swift 5.9+
 
-1. **URLSession with Swift 5 async/await** ✅
-   - Modern concurrency patterns
-   - Proper error handling
-   - Non-blocking UI updates
+### Installation
 
-2. **Codable Models** ✅
-   - `NewsAPIResponse` for API responses
-   - `NewsArticle` with computed properties
-   - `Source` for article sources
-   - `NewsAPIRequest` for request parameters
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/Feed-Reader.git
+cd Feed-Reader
+```
 
-3. **Comprehensive Error Handling** ✅
-   - Custom `NewsAPIError` enum
-   - Network, decoding, and API errors
-   - User-friendly error messages
-   - Recovery suggestions
+2. Open `Feed Reader.xcodeproj` in Xcode
 
-4. **Pagination Support** ✅
-   - Page-based loading
-   - Infinite scroll implementation
-   - Configurable page sizes
-
-5. **Secure API Key Management** ✅
-   - Centralized configuration
-   - Validation methods
-   - Security recommendations
-
-6. **MVVM Architecture** ✅
-   - Clean separation of concerns
-   - Observable state management
-   - Testable components
-
-## 🔧 Usage Examples
-
-### Basic API Call
-
+3. Configure your NewsAPI key in `APIConfiguration.swift`:
 ```swift
-let apiService = APIService()
-let response = try await apiService.fetchNews(query: "Apple")
+static let apiKey: String = "YOUR_API_KEY_HERE"
 ```
 
-### With Custom Parameters
+4. Build and run the project
 
-```swift
-let request = NewsAPIRequest(
-    query: "Technology",
-    from: "2025-08-01",
-    sortBy: "publishedAt",
-    page: 2,
-    pageSize: 50
-)
-let response = try await apiService.fetchNews(request: request)
+### Using Mock Data for Development
+
+To use mock data during development, set the environment variable:
+
+```bash
+export USE_MOCK_DATA=true
 ```
 
-### Using the ViewModel
+Or in Xcode:
+1. Edit Scheme → Run → Arguments → Environment Variables
+2. Add `USE_MOCK_DATA` with value `true`
 
-```swift
-@StateObject private var viewModel = NewsViewModel()
+## API Configuration
 
-// Load initial data
-await viewModel.loadNews()
+The app is configured to:
+- Fetch news from the last 24 hours (dynamically calculated)
+- Use pagination with 20 articles per page
+- Sort by popularity
+- Handle rate limiting (5 requests per minute)
 
-// Search for specific topics
-await viewModel.searchNews(query: "SwiftUI")
+## Caching Strategy
 
-// Load more pages
-await viewModel.loadNextPage()
+### Images
+- **Memory Cache**: 100 images, 50MB limit
+- **Disk Cache**: Persistent storage with TTL of 24 hours
+- **Automatic Cleanup**: Expired images are automatically removed
+
+### Search Results
+- **Memory Cache**: 50 search results, 25MB limit
+- **Disk Cache**: Persistent storage with TTL of 1 hour
+- **Query-based Keys**: Separate cache for each search query and page
+
+## Testing
+
+The app includes comprehensive testing support:
+
+- **Unit Tests**: Test business logic and networking
+- **Mock Services**: Simulate API responses and errors
+- **Preview Support**: SwiftUI previews for all UI states
+
+### Running Tests
+
+```bash
+# Run all tests
+xcodebuild test -scheme "Feed Reader" -destination 'platform=iOS Simulator,name=iPhone 15'
+
+# Run specific test target
+xcodebuild test -scheme "Feed Reader" -target "Feed ReaderTests"
 ```
 
-## 🔒 Security Considerations
+## Performance Features
 
-### Current Implementation
-- API key stored in `APIConfiguration.swift`
-- Basic validation included
-- Rate limiting implemented
+- **Lazy Loading**: Images and content load only when needed
+- **Memory Management**: Efficient memory usage with automatic cleanup
+- **Network Optimization**: Reduced API calls through smart caching
+- **Smooth Scrolling**: Optimized scrolling performance with LazyVStack
 
-### Production Recommendations
+## Error Handling
 
-1. **Keychain Storage**
-```swift
-// Store API key in Keychain
-let keychain = KeychainWrapper.standard
-keychain.set(apiKey, forKey: "news_api_key")
-```
+The app handles various error scenarios gracefully:
 
-2. **Environment Variables**
-```swift
-// Use environment variables
-let apiKey = ProcessInfo.processInfo.environment["NEWS_API_KEY"] ?? ""
-```
+- **Network Errors**: Connection issues, timeouts, server errors
+- **API Errors**: Invalid API keys, rate limiting, bad requests
+- **Data Errors**: Invalid responses, parsing failures
+- **User Feedback**: Clear error messages with recovery suggestions
 
-3. **Backend Proxy**
-```swift
-// Route requests through your backend
-let baseURL = "https://your-backend.com/api/news"
-```
+## Contributing
 
-4. **API Key Rotation**
-```swift
-// Implement key rotation logic
-class APIKeyManager {
-    static func getCurrentKey() -> String {
-        // Implement rotation logic
-    }
-}
-```
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
-## 🧪 Testing
+## License
 
-### Unit Tests
-The `Feed ReaderTests/NetworkTests.swift` file demonstrates how to test:
-- JSON decoding
-- URL construction
-- Error handling
-- API configuration validation
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Mock Testing
-```swift
-// Create mock URLSession for testing
-class MockURLSession: URLSession {
-    var mockData: Data?
-    var mockResponse: URLResponse?
-    var mockError: Error?
-    
-    override func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        if let error = mockError {
-            throw error
-        }
-        return (mockData ?? Data(), mockResponse ?? HTTPURLResponse())
-    }
-}
-```
+## Acknowledgments
 
-## 📱 UI Features
+- [NewsAPI](https://newsapi.org/) for providing the news data
+- [SwiftUI](https://developer.apple.com/xcode/swiftui/) for the modern UI framework
+- [Unsplash](https://unsplash.com/) for placeholder images in mock data
 
-### Implemented UI Components
-- ✅ News article list with infinite scroll
-- ✅ Search functionality
-- ✅ Loading states
-- ✅ Error handling with retry
-- ✅ Pull-to-refresh
-- ✅ Empty state handling
+## Support
 
-### UI States
-1. **Loading**: Shows spinner and loading text
-2. **Error**: Displays error message with retry button
-3. **Empty**: Shows empty state with helpful message
-4. **Content**: Displays articles with pagination
+If you encounter any issues or have questions:
 
-## 🔄 Rate Limiting
+1. Check the [Issues](https://github.com/yourusername/Feed-Reader/issues) page
+2. Create a new issue with detailed information
+3. Include device, iOS version, and steps to reproduce
 
-The implementation includes basic rate limiting:
-- 5 requests per minute (configurable)
-- Automatic request counting
-- Error handling for rate limit exceeded
+---
 
-## 📊 Performance Optimizations
-
-1. **Lazy Loading**: Articles load as needed
-2. **Image Caching**: URLs provided for image loading
-3. **Efficient Decoding**: Custom decoders for optimal performance
-4. **Memory Management**: Proper cleanup of resources
-
-## 🛠️ Configuration
-
-### Environment Settings
-```swift
-enum Environment {
-    case development  // 30s timeout
-    case staging      // 20s timeout  
-    case production   // 15s timeout
-}
-```
-
-### API Configuration
-```swift
-struct APIConfiguration {
-    static let defaultPageSize = 20
-    static let maxPageSize = 100
-    static let requestsPerMinute = 5
-}
-```
-
-## 🚨 Error Handling
-
-### Error Types
-- `invalidURL`: URL construction failed
-- `networkError`: Network connectivity issues
-- `decodingError`: JSON parsing failed
-- `apiError`: NewsAPI returned error
-- `rateLimitExceeded`: Too many requests
-- `apiKeyInvalid`: Invalid API key
-
-### Error Recovery
-Each error includes:
-- User-friendly description
-- Technical failure reason
-- Recovery suggestion
-
-## 📈 Future Enhancements
-
-1. **Caching Layer**
-   - Core Data integration
-   - Offline support
-   - Cache invalidation
-
-2. **Advanced Search**
-   - Date range filtering
-   - Source filtering
-   - Sort options
-
-3. **Push Notifications**
-   - Breaking news alerts
-   - Topic-based notifications
-
-4. **Analytics**
-   - User engagement tracking
-   - Performance monitoring
-   - Error reporting
-
-## 🤝 Contributing
-
-1. Follow the existing code structure
-2. Add tests for new features
-3. Update documentation
-4. Follow Swift style guidelines
-
-## 📄 License
-
-This implementation is provided as-is for educational and development purposes. 
+Built with ❤️ using SwiftUI 

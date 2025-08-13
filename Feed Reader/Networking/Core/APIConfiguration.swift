@@ -32,7 +32,14 @@ struct APIConfiguration {
     static let defaultPageSize = 20
     static let maxPageSize = 100
     static let defaultSortBy = "popularity"
-    static let defaultFromDate = "2025-08-04"
+    
+    /// Returns yesterday's date in ISO 8601 format for the last 24 hours
+    static var defaultFromDate: String {
+        let calendar = Calendar.current
+        let yesterday = calendar.date(byAdding: .day, value: -2, to: Date()) ?? Date()
+        let formatter = ISO8601DateFormatter()
+        return formatter.string(from: yesterday)
+    }
     
     // MARK: - Rate Limiting
     static let requestsPerDay = 1000 // Free tier limit

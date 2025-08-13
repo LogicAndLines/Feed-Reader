@@ -8,6 +8,9 @@
 import Foundation
 import SwiftUI
 
+// Import networking components
+@_exported import struct Foundation.URL
+
 /// ViewModel for managing news data and API interactions
 @MainActor
 class NewsViewModel: ObservableObject {
@@ -22,13 +25,21 @@ class NewsViewModel: ObservableObject {
     @Published var searchQuery = "Apple"
     
     // MARK: - Private Properties
-    private let apiService: APIService
+    private var apiService: NewsAPIServiceProtocol
     private let pageSize = APIConfiguration.defaultPageSize
     private var totalResults = 0
+    private var isUsingMockData = false
     
     // MARK: - Initialization
-    init(apiService: APIService = APIService()) {
+    init(apiService: NewsAPIServiceProtocol = APIService()) {
         self.apiService = apiService
+        #if DEBUG
+        // Use mock data in debug builds for testing
+        if ProcessInfo.processInfo.environment["USE_MOCK_DATA"] == "true" {
+            self.apiService = MockAPIService()
+            isUsingMockData = true
+        }
+        #endif
     }
     
     // MARK: - Public Methods
@@ -49,6 +60,11 @@ class NewsViewModel: ObservableObject {
         await loadNews(page: 1, isRefresh: true)
     }
     
+    /// Forces a refresh by bypassing cache
+    func forceRefreshNews() async {
+        await loadNewsForceRefresh(page: 1, isRefresh: true)
+    }
+    
     /// Searches for news with a specific query
     func searchNews(query: String) async {
         searchQuery = query
@@ -59,6 +75,14 @@ class NewsViewModel: ObservableObject {
     func clearError() {
         hasError = false
         errorMessage = nil
+    }
+    
+    /// Clears all cache and forces fresh data
+    func clearAllCache() {
+        // Clear cache and force refresh
+        Task {
+            await forceRefreshNews()
+        }
     }
     
     // MARK: - Private Methods
@@ -76,6 +100,48 @@ class NewsViewModel: ObservableObject {
         
         do {
             let response = try await apiService.fetchNews(
+                query: searchQuery,
+                page: page,
+                pageSize: pageSize
+            )
+            
+            // Update articles
+            if isRefresh {
+                articles = response.articles
+            } else {
+                articles.append(contentsOf: response.articles)
+            }
+            
+            // Update pagination state
+            currentPage = page
+            totalResults = response.totalResults
+            hasMorePages = articles.count < totalResults
+            
+            // Clear any previous errors
+            clearError()
+            
+        } catch let error as NewsAPIError {
+            handleError(error)
+        } catch {
+            handleError(NewsAPIError.networkError(error.localizedDescription))
+        }
+        
+        isLoading = false
+    }
+    
+    /// Internal method to load news articles with cache bypass
+    private func loadNewsForceRefresh(page: Int, isRefresh: Bool) async {
+        // Prevent multiple simultaneous requests
+        guard !isLoading else { return }
+        
+        isLoading = true
+        
+        if isRefresh {
+            clearError()
+        }
+        
+        do {
+            let response = try await apiService.fetchNewsForceRefresh(
                 query: searchQuery,
                 page: page,
                 pageSize: pageSize
@@ -164,12 +230,23 @@ extension NewsViewModel {
     
     /// Creates a preview instance with mock data
     static func preview() -> NewsViewModel {
-        let viewModel = NewsViewModel()
-        viewModel.articles = [
-            NewsArticle.preview(),
-            NewsArticle.preview(),
-            NewsArticle.preview()
-        ]
+        let viewModel = NewsViewModel(apiService: MockAPIService())
+        viewModel.articles = MockDataService.shared.getMockArticles()
+        return viewModel
+    }
+    
+    /// Creates a preview instance with empty state
+    static func previewEmpty() -> NewsViewModel {
+        let viewModel = NewsViewModel(apiService: MockAPIService())
+        viewModel.articles = []
+        return viewModel
+    }
+    
+    /// Creates a preview instance with error state
+    static func previewError() -> NewsViewModel {
+        let viewModel = NewsViewModel(apiService: MockAPIService())
+        viewModel.hasError = true
+        viewModel.errorMessage = "Mock error for testing"
         return viewModel
     }
 } 
